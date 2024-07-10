@@ -45,13 +45,6 @@ class CrudRepository {
     }
 
     async update(id, data) {
-        const airplane = await this.model.findByPk(id);
-
-        if(!airplane) {
-            Logger.error(`The data has not been found in database for the ID ${id}`);
-            throw new NotFoundError(response, "Requested data is not found and not updated!");
-        }
-
         const response = await this.model.update(data, {
             where: {
                 id: id
