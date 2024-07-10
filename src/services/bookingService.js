@@ -58,7 +58,7 @@ class BookingService {
             const currentTime = new Date();
 
             if(currentTime - bookingTime > 300000) { 
-                await this.bookingRepository.update(data.bookingId, {status: CANCELLED}, transaction);
+                await this.cancelBooking(data.bookingId);
                 Logger.error('The booking has been deleted, since the time limit expired');
                 throw new BadRequestError('TimeOut', "The booking time expired!");
             } 
@@ -80,6 +80,30 @@ class BookingService {
         } catch (error) {
             await transaction.rollback();
             Logger.error('Some internal server issue occured during booking process');
+            throw error;
+        }
+    }
+
+    async cancelBooking(bookingId) {
+        const transaction = await db.sequelize.transaction();
+        try {
+            const bookingDetails = await this.bookingRepository.get(bookingId, transaction);
+            
+            if(bookingDetails.status == CANCELLED) {
+                await transaction.commit();
+                return true;
+            }
+
+            await axios.patch(`${ServerConfig.FLIGHTS_SERVICE}/api/v1/flights/${bookingDetails.flightId}/seats`, {
+                seats: bookingDetails.noOfSeats,
+                dec: 0
+            });
+            await this.bookingRepository.update(bookingId, {status: CANCELLED}, transaction);
+            await transaction.commit();
+
+        } catch (error) {
+            await transaction.rollback();
+            Logger.error('Some internal server issue occured, cant cancel booking');
             throw error;
         }
     }
