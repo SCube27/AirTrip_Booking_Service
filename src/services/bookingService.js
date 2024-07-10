@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const db = require('../models/index');
 const { Logger } = require('../config/index');
-const { InternalServerError } = require('../errors/index');
+const { InternalServerError, BadRequestError } = require('../errors/index');
 const { ServerConfig } = require('../config/index');
 
 class BookingService { 
@@ -11,16 +11,17 @@ class BookingService {
     }
 
     async createBooking(data) {
-        try {
+        return new Promise((resolve, reject) => {
             const result = db.sequelize.transaction(async function bookingImpl(t) {
-                const flight = await axios.get(`${ServerConfig.FLIGHTS_SERVICE}/api/v1/flights/${data.flightId}`);
-                console.log(flight.data);
-                return true;
+                const flight = await axios.get(`${ServerConfig.FLIGHTS_SERVICE}/api/v1/flights/${data.flightId}`);  
+                const flightData = flight.data.data;
+                if(data.noOfSeats > flightData.totalSeats) {
+                    Logger.error("Booking failed due to attempt of booking more seats than remaining.")
+                    reject(new BadRequestError('noOfSeats', "No of seats booked should be less than remaining seats"));
+                }
+                resolve(true);
             });
-        } catch (error) {
-            Logger.error('Some internal server issue, cant create a booking');
-            throw new InternalServerError('Something went wrong internally, booking not created');
-        }
+        });
     }
 }
 
