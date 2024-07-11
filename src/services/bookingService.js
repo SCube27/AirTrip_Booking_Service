@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const db = require('../models/index');
 const { Logger } = require('../config/index');
-const { InternalServerError, BadRequestError } = require('../errors/index');
+const { BadRequestError } = require('../errors/index');
 const { ServerConfig } = require('../config/index');
 const { Enums } = require('../utils/index');
 const { BOOKED, CANCELLED } = Enums.BOOKING_STATUS;
@@ -104,6 +104,17 @@ class BookingService {
         } catch (error) {
             await transaction.rollback();
             Logger.error('Some internal server issue occured, cant cancel booking');
+            throw error;
+        }
+    }
+
+    async cancelOldBookings() {
+        try {
+            const time = new Date(Date.now() - 1000 * 300); // time 5 mins ago
+            const response = await this.bookingRepository.cancelOldBookings(time);
+            return response;
+        } catch (error) {
+            Logger.error('Some internal server issue occured, CRON cant cancel old bookings');
             throw error;
         }
     }

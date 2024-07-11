@@ -6,5 +6,5 @@ const BOOKING_STATUS = {
 };
 
 module.exports = {
-    BOOKING_STATUS,
+    BOOKING_STATUS
 }
