@@ -5,6 +5,8 @@ const { BookingService } = require('../services/index');
 
 const bookingService = new BookingService(new BookingRepository);
 
+const inMemDb = {};
+
 async function createBooking(req, res, next) {
     try {
         const booking = await bookingService.createBooking({
@@ -26,11 +28,31 @@ async function createBooking(req, res, next) {
 
 async function makePayment(req, res, next) {
     try {
+        const idempotencyKey = req.headers['x-idempotency-key'];
+
+        if(!idempotencyKey) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                success: false,
+                message: 'Idempotency key not present',
+                error: {},
+            });
+        }
+
+        if(inMemDb[idempotencyKey]) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                success: false,
+                message: 'Cannot retry on a Successful Payment',
+                error: {},
+            });
+        }
+
         const payment = await bookingService.makePayment({
             totalCost: req.body.totalCost,
             userId: req.body.userId,
             bookingId: req.body.bookingId
         });
+
+        inMemDb[idempotencyKey] = idempotencyKey;
 
         return res.status(StatusCodes.OK).json({
             success: true,
